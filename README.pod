@@ -202,8 +202,8 @@ raised from javascript this code ref will be called with 2 arguments
 
 =over 4
 
-=item JavaScript::Shell instance
-=item error object - Hash ref
+JavaScript::Shell instance
+error object - Hash ref
 
 =back
 
