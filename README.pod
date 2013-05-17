@@ -155,6 +155,27 @@ Initiates SpiderMonkey Shell
 
 creates a new context
 
+=head2 run
+
+This will run javascript code in a blocking loop until you call jshell.endLoop()
+from your javascript code
+
+    $js->Set('Name' => 'XXX');
+    $js->eval(qq!
+        for (var i = 0; i < 100; i++){
+            
+        }
+        
+        jshell.endLoop();
+        
+    !);
+    
+    $js->run();
+    
+    ##will never reach this point unless we call
+    ## jshell.endLoop(); in javascript code as above
+    
+
 =head2 Set
 
 Sets/Defines javascript variables, objects and functions from perl
@@ -290,6 +311,13 @@ Destroy javascript shell / clear context
     
     ##close spidermonkey shell
     $js->destroy();
+
+=head1 LICENSE
+
+
+
+=head1 COPYRIGHTS
+
 
 
 =cut
