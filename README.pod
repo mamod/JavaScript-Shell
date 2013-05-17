@@ -43,7 +43,10 @@ JavaScript::Shell - Run Spidermonkey shell from Perl
 =head1 DESCRIPTION
 
 JavaScript::Shell will turn Spidermonkey shell to an interactive environment
-by connecting it 
+by connecting it to perl
+
+It will allow you to bind functions from perl and call them from javascript or
+create functions in javascript and call them from perl
 
 =head1 WHY
 
@@ -54,7 +57,7 @@ perl / javascript binding wasn't an option, so I thought of this approach as an
 alternative.
 
 Even though this sounds crazy to do, to my surprise it worked as expected - at
-least in my
+least in my usgae cases
 
 =head1 SPEED
 
@@ -70,18 +73,59 @@ improve speed like
 
 =over 4
 
-=item make sure you have L<JSON::XS> installed - this is important, JavaScript::Shell
-uses JSON::Any to parse data and it will use JSON::XS by default if it's already
-installed in your system
+=item L<JSON::XS>
 
-=item try to transfer small data chunks between processes when possible, sending
+Make sure you have L<JSON::XS> installed - this is important, JavaScript::Shell
+uses JSON::Any to parse data and it will use any available JSON parser
+but if you have JSON::XS installed in your system it will use it by default as
+it's the fastest JSON parser available
+
+=item Data Transfer
+
+Try to transfer small data chunks between processes when possible, sending
 large data will be very slow
 
-=item minimize number of calls to both ends
+=item Minimize calls
+
+Minimize number of calls to both ends, let each part do it's processing
+for eaxmple:
+
+    ##instead of
+    
+    $js->eval(qq!
+        function East (){}
+        function West (){}
+        function North (){}
+        function South (){}
+    !);
+    
+    $js->call('East');
+    $js->call('West');
+    $js->call('North');
+    $js->call('South');
+    
+    ##do this
+    
+    $js->eval(qq!
+        function all () {
+            
+            East();
+            West();
+            North();
+            South();
+            
+        }
+        
+        function East (){}
+        function west (){}
+        function North (){}
+        function South (){}
+        
+    !);
+    
+    $js->call('all');
 
 =back
-
-See L<EXAMPLES|JavaScript::Shell#EXAMPLES> section
 
 
 =head1 CONTEXT
@@ -202,8 +246,9 @@ raised from javascript this code ref will be called with 2 arguments
 
 =over 4
 
-JavaScript::Shell instance
-error object - Hash ref
+=item * JavaScript::Shell instance
+
+=item * error object - Hash ref
 
 =back
 
@@ -211,11 +256,15 @@ Error Hash has the folloing keys
 
 =over 4
 
-=item B<message>  I<error message>
-=item B<type>     I<javascript error type: Error, TypeError, ReferenceError ..>
-=item B<file>     I<file name wich raised this error>
-=item B<line>     I<line number>
-=item B<stack>    I<string of the full stack trace>
+=item * B<message>  I<error message>
+
+=item * B<type>     I<javascript error type: Error, TypeError, ReferenceError ..>
+
+=item * B<file>     I<file name wich raised this error>
+
+=item * B<line>     I<line number>
+
+=item * B<stack>    I<string of the full stack trace>
 
 =back
 
