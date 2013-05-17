@@ -1,10 +1,8 @@
+=pod
+
 =head1 NAME
 
-JavaScript::Shell
-
-=head1 DESCRIPTION
-
-Turning Spidermonkey excutable shell to an interactive environment
+JavaScript::Shell - Run Spidermonkey shell from Perl
 
 =head1 SYNOPSIS
 
@@ -41,6 +39,50 @@ Turning Spidermonkey excutable shell to an interactive environment
     print $val . "\n"; ## prints 'Hello Mamod Mehyar'
     
     $js->destroy();
+
+=head1 DESCRIPTION
+
+JavaScript::Shell will turn Spidermonkey shell to an interactive environment
+by connecting it 
+
+=head1 WHY
+
+While I was working on a project where I needed to connect perl with javascript
+I had a lot of problems with existing javascript modules, they were eaither hard
+to compile or out of date, and since I don't know C/C++ - creating my own
+perl / javascript binding wasn't an option, so I thought of this approach as an
+alternative.
+
+Even though this sounds crazy to do, to my surprise it worked as expected - at
+least in my
+
+=head1 SPEED
+
+JavaScript::Shell connect spidermonkey with perl through IPC bridge using
+L<IPC::Open2> so execution speed will never be as fast as using C/C++
+bindings ported to perl directly
+
+There is another over head when translating data types to/from perl, since it
+converts perl data to JSON & javascript JSON to perl data back again.
+
+Saying that the over all speed is acceptable and you can take some steps to
+improve speed like
+
+=over 4
+
+=item make sure you have L<JSON::XS> installed - this is important, JavaScript::Shell
+uses JSON::Any to parse data and it will use JSON::XS by default if it's already
+installed in your system
+
+=item try to transfer small data chunks between processes when possible, sending
+large data will be very slow
+
+=item minimize number of calls to both ends
+
+=back
+
+See L<EXAMPLES|JavaScript::Shell#EXAMPLES> section
+
 
 =head1 CONTEXT
 
@@ -105,14 +147,14 @@ Sets/Defines javascript variables, objects and functions from perl
     $ctx->Set('obj.get' => sub { });
     ...
 
-head2 get
+=head2 get
 
-get values from Javascript code, returns a C<JavaScript::Shell::Value> Object
+get values from javascript code, returns a C<JavaScript::Shell::Value> Object
     
     my $ret = $ctx->get('str');
     print $ret->value; ## Hello
     
-    ## remember to call value to get the returned text
+    ## remember to call value to get the returned string/object
     
 get method will search your context for a matched variable/object/function and
 return it's value, if the name was detected for a function in will run this
@@ -132,14 +174,14 @@ function first and then returns it's return value
     !)->value;  #--> 5
     
     
-head2 call
+=head2 call
 
 Calling javascript functions from perl, same as C<get> but doesn't return any
 value
 
     $ctx->call('test');
 
-head3 eval
+=head2 eval
 
 eval javascript code
 
@@ -153,5 +195,52 @@ eval javascript code
         ...
     !);
     
+=head2 onError
+
+set error handler method, this method accepts a code ref only. When an error
+raised from javascript this code ref will be called with 2 arguments
+
+=over 4
+
+=item JavaScript::Shell instance
+=item error object - Hash ref
+
+=back
+
+Error Hash has the folloing keys
+
+=over 4
+
+=item B<message>  I<error message>
+=item B<type>     I<javascript error type: Error, TypeError, ReferenceError ..>
+=item B<file>     I<file name wich raised this error>
+=item B<line>     I<line number>
+=item B<stack>    I<string of the full stack trace>
+
+=back
+
+Setting error hnadler example
+
+    my $js = JavaScript::Shell->new();
+    $js->onError(sub{
+        my $self = shift;
+        my $error = shift;
+        print STDERR $error->{message} . ' at ' . $error->{line}
+        exit(0);
+    });
+
+=head2 destroy
+
+Destroy javascript shell / clear context
+
+    my $js = JavaScript::Shell->new();
+    my $ctx->createContext();
     
+    ##clear context;
+    $ctx->destroy();
+    
+    ##close spidermonkey shell
+    $js->destroy();
+
+
 =cut
