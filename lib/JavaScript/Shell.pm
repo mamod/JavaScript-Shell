@@ -40,8 +40,7 @@ sub new {
         $opt->{onError} = sub {
             my $js = shift;
             my $error = shift;
-            #$js->destroy();
-            
+            $js->destroy();
             print STDERR $error->{type}
             . ' : '
             . $error->{message}
@@ -54,15 +53,14 @@ sub new {
     
     ( my $path = $INC{'JavaScript/Shell.pm'} ) =~ s/\.pm$//;
     
-    my $js = "$path/bin/js";
-    $js = File::Spec->canonpath( $js );
+    my $localpath = File::Spec->canonpath($path . '/bin');
+    local $ENV{PATH} = $localpath;
     
     my $self = bless({
         running => 0,
         _path => $path,
         _json => JSON::Any->new,
         _ErrorHandle => $opt->{onError},
-        _js => $js,
         pid => $$
     },$class);
     
@@ -143,7 +141,7 @@ sub _run {
     my $self = shift;
     my $file = shift;
     
-    my @cmd = ($self->{_js},'-i','-e', $self->_ini_script());
+    my @cmd = ('js','-i','-e', $self->_ini_script());
     my $pid = open2($self->{FROM_JSHELL},$self->{TO_JSHELL}, @cmd);
     $self->{jshell_pid} = $pid;
     
