@@ -50,14 +50,14 @@ sub getBinaries {
     my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
     #my $url = 'http://127.0.0.1/' . $file;
     #trying curl
-    print "\n ==================== Trying curl ============================= \n";
-    system "curl $url";
-    
-    ##trying wget
-    if (!-e $file) {
+    #print "\n ==================== Trying curl ============================= \n";
+    #system "curl $url";
+    #
+    ###trying wget
+    #if (!-e $file) {
 	print "\n ===================== Trying wget ==========================\n";
 	system "wget $url";
-    }
+    #}
     
     if (!-e $file) {
 	
