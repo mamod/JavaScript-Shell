@@ -1,7 +1,7 @@
 use 5.008005;
 use ExtUtils::MakeMaker;
 use Archive::Extract;
-
+use Data::Dumper;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 My_WriteMakefile(
@@ -18,7 +18,8 @@ My_WriteMakefile(
 
 sub My_WriteMakefile {
     my %params=@_;
-    my $ok = getBinaries();
+    my $ok = 0;
+    #my $ok = getBinaries();
     WriteMakefile(%params);
     
     if (!$ok){
@@ -28,6 +29,8 @@ sub My_WriteMakefile {
 	. "and extract to your local path\n"
 	. "You can skip testing for now and make install directly\n";
     }
+    
+    print Dumper \%ENV;
     
 }
 
