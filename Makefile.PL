@@ -20,8 +20,11 @@ My_WriteMakefile(
 sub My_WriteMakefile {
     my %params=@_;
     my $ok = 0;
-    $ok = getBinaries();
+    
     WriteMakefile(%params);
+    
+    $ok = getBinaries();
+    
     
     if (!$ok){
 	print "couldn't fetch spidermonkey shell from remote host\n"
@@ -101,7 +104,7 @@ sub getBinaries {
     
     eval {
 	my $ae = Archive::Extract->new( archive => $file );
-	my $ok = $ae->extract( to => './lib/JavaScript/Shell/bin' );
+	my $ok = $ae->extract( to => './blib/lib/JavaScript/Shell/bin' );
     };
     
     ##remove
@@ -118,3 +121,5 @@ sub getBinaries {
     return 1;
     
 }
+
+
