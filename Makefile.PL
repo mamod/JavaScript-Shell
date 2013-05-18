@@ -1,4 +1,4 @@
-use 5.016002;
+use 5.008005;
 use ExtUtils::MakeMaker;
 use Archive::Extract;
 
