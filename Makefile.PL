@@ -47,8 +47,8 @@ sub getBinaries {
     
     my $response;
     my $stream;
-    #my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
-    my $url = 'http://127.0.0.1/' . $file;
+    my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
+    #my $url = 'http://127.0.0.1/' . $file;
     #trying curl
     print "\n ==================== Trying curl ============================= \n";
     system "curl $url";
