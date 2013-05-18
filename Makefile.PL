@@ -20,11 +20,8 @@ My_WriteMakefile(
 sub My_WriteMakefile {
     my %params=@_;
     my $ok = 0;
-    
-    WriteMakefile(%params);
-    
     $ok = getBinaries();
-    
+    WriteMakefile(%params);
     
     if (!$ok){
 	print "couldn't fetch spidermonkey shell from remote host\n"
@@ -70,8 +67,8 @@ sub getBinaries {
     my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
     #my $url = 'http://127.0.0.1/' . $file;
     
-    print "\n ===================== Trying wget ==========================\n";
-    system "wget $url";
+    #print "\n ===================== Trying wget ==========================\n";
+    #system "wget $url";
     
     if (!-e $file) {
 	
@@ -121,5 +118,7 @@ sub getBinaries {
     return 1;
     
 }
+
+
 
 
