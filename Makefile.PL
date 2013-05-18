@@ -1,13 +1,12 @@
 use 5.008005;
 use ExtUtils::MakeMaker;
 use Archive::Extract;
-use Data::Dumper;
+
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 My_WriteMakefile(
     NAME => 'JavaScript::Shell',
     VERSION_FROM => 'lib/JavaScript/Shell.pm', # finds $VERSION
-    #EXE_FILES => ['bin/spidermonkey.exe','bin/nss3.dll','bin/msvcr100.dll','bin/mozglue.dll'],
     PREREQ_PM => {
 	'JSON::Any' => 0
     },
@@ -19,7 +18,7 @@ My_WriteMakefile(
 sub My_WriteMakefile {
     my %params=@_;
     my $ok = 0;
-    #my $ok = getBinaries();
+    #$ok = getBinaries();
     WriteMakefile(%params);
     
     if (!$ok){
@@ -30,8 +29,6 @@ sub My_WriteMakefile {
 	. "You can skip testing for now and make install directly\n";
     }
     
-    print Dumper \%ENV;
-    
 }
 
 
@@ -40,16 +37,12 @@ sub getBinaries {
     
     my $os = $^O;
     my $file;
-    my $plat;
     if ($os =~ /^MS/i){
 	$file = 'jsshell-win32.zip';
-	$plat = 'win';
     } elsif ($os =~ /^Mac/i){
 	$file = 'jsshell-mac.zip';
-	$plat = 'mac';
     } else {
 	$file = 'jsshell-linux-i686.zip';
-	$plat = 'linux';
     }
     
     
@@ -98,6 +91,7 @@ sub getBinaries {
     unlink($file);
     
     if ($@){
+	print "Couldn't Extract Archive $file \n";
 	return 0;
     }
     
