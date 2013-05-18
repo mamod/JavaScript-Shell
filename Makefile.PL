@@ -1,8 +1,6 @@
 use 5.016002;
 use ExtUtils::MakeMaker;
-use FindBin qw($Bin $RealBin);
 use Archive::Extract;
-use Data::Dumper;
 
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
@@ -22,7 +20,14 @@ sub My_WriteMakefile {
     my %params=@_;
     my $ok = getBinaries();
     WriteMakefile(%params);
-    #print Dumper $Bin;
+    
+    if (!$ok){
+	print "couldn't fetch spidermonkey shell from remote host\n"
+	. "please download your system binaries from\n"
+	. "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk\n"
+	. "and extract to your local path\n"
+	. "You can skip testing for now and make install directly\n";
+    }
     
 }
 
@@ -48,16 +53,9 @@ sub getBinaries {
     my $response;
     my $stream;
     my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
-    #my $url = 'http://127.0.0.1/' . $file;
-    #trying curl
-    #print "\n ==================== Trying curl ============================= \n";
-    #system "curl $url";
-    #
-    ###trying wget
-    #if (!-e $file) {
-	print "\n ===================== Trying wget ==========================\n";
-	system "wget $url";
-    #}
+    
+    print "\n ===================== Trying wget ==========================\n";
+    system "wget $url";
     
     if (!-e $file) {
 	
@@ -73,17 +71,17 @@ sub getBinaries {
 	    exit;
 	}
 	
-	open(my $fh,'>>',$file);
-	binmode($fh);
+	
 	
 	my $ua = LWP::UserAgent->new;
 	$ua->timeout(5);
 	$ua->env_proxy();
 	$response = $ua->get($url);
 	if ($response->is_success) {
+	    open(my $fh,'>>',$file);
+	    binmode($fh);    
 	    $fh->print($response->content);
 	} else {
-	    
 	    return 0;
 	}
     }
@@ -93,21 +91,12 @@ sub getBinaries {
 	my $ok = $ae->extract( to => './lib/JavaScript/Shell/bin' );
     };
     
-    if ($@){
-	return 0;
-    }
-    
     ##remove
     unlink($file);
     
-    ##rename js to spidermonkey[.exe];
-#    if ($plat eq 'win'){
-#	rename './bin/js.exe','./bin/spidermonkey.exe'
-#    } elsif ($plat eq 'linux'){
-#	rename './lib/bin/js','./bin/spidermonkey'
-#    } else {
-#	
-#    }
+    if ($@){
+	return 0;
+    }
     
     return 1;
     
