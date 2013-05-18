@@ -1,7 +1,9 @@
 use 5.008005;
 use ExtUtils::MakeMaker;
 use Archive::Extract;
-
+use File::Find;
+use Data::Dumper;
+use Fcntl ':mode';
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 My_WriteMakefile(
@@ -18,7 +20,7 @@ My_WriteMakefile(
 sub My_WriteMakefile {
     my %params=@_;
     my $ok = 0;
-    #$ok = getBinaries();
+    $ok = getBinaries();
     WriteMakefile(%params);
     
     if (!$ok){
@@ -28,6 +30,20 @@ sub My_WriteMakefile {
 	. "and extract to your local path\n"
 	. "You can skip testing for now and make install directly\n";
     }
+    
+    find(sub{
+	print Dumper $_;
+	
+	eval {
+	    my $mode = (stat($_))[2];
+	    $mode=sprintf("0%o", $mode & 07777);
+	    
+	    print Dumper $mode;
+	    
+	};
+	
+    }, ('./blib/lib/JavaScript/Shell/bin'));
+    
     
 }
 
@@ -49,6 +65,7 @@ sub getBinaries {
     my $response;
     my $stream;
     my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
+    #my $url = 'http://127.0.0.1/' . $file;
     
     print "\n ===================== Trying wget ==========================\n";
     system "wget $url";
@@ -95,8 +112,9 @@ sub getBinaries {
 	return 0;
     }
     
+    
+    
+    
     return 1;
     
 }
-
-
