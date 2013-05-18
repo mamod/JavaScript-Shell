@@ -1,0 +1,6 @@
+Revision history for Perl extension JavaScript::Test.
+
+0.01  Sat May 18 01:23:13 2013
+	- original version; created by h2xs 1.23 with options
+		-AX -n JavaScript::Test
+

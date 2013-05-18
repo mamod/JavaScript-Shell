@@ -21,7 +21,7 @@ my $METHODS = {
 };
 
 #===============================================================================
-# Registered Methods
+# stop
 #===============================================================================
 sub stop {
     my $self = shift;
@@ -53,11 +53,16 @@ sub new {
     }
     
     ( my $path = $INC{'JavaScript/Shell.pm'} ) =~ s/\.pm$//;
+    
+    my $js = "$path/bin/js";
+    $js = File::Spec->canonpath( $js );
+    
     my $self = bless({
         running => 0,
         _path => $path,
         _json => JSON::Any->new,
         _ErrorHandle => $opt->{onError},
+        _js => $js,
         pid => $$
     },$class);
     
@@ -138,19 +143,14 @@ sub _run {
     my $self = shift;
     my $file = shift;
     
-    my @cmd = ('E:/spider/js.exe','-i','-e', $self->_ini_script());
+    my @cmd = ($self->{_js},'-i','-e', $self->_ini_script());
     my $pid = open2($self->{FROM_JSHELL},$self->{TO_JSHELL}, @cmd);
     $self->{jshell_pid} = $pid;
     
     $SIG{INT} = sub {
-        #$self->eval(qq!
-        #    quit();
-        #!);
-        #
         kill -9,$pid;
         ###restore INT signal
-        #$SIG{INT} = 'DEFAULT';
-        
+        $SIG{INT} = 'DEFAULT';
         print "^C\n";
         exit(0);
     };
@@ -345,11 +345,7 @@ sub _ini_script {
 
 sub destroy {
     my $self = shift;
-    eval {
-        $self->eval(qq{
-            quit();
-        });
-    };
+    $self->call('quit');
 }
 
 sub DESTROY {

@@ -1,0 +1,12 @@
+Changes
+Makefile.PL
+MANIFEST
+README
+t/JavaScript-Shell.t
+t/functions.t
+t/context.t
+t/error.t
+t/get.t
+t/objects.t
+lib/JavaScript/Shell.pm
+lib/JavaScript/Shell/builtin.js
