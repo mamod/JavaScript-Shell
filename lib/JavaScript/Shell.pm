@@ -119,15 +119,15 @@ sub run {
         if ($catch =~ s/to_perl\[(.*)\]end_perl/$1/){
             $self->processData($catch);
         } else {
-            #if (!$once) {
+            if (!$once) {
                 STDOUT->print($catch);
-            #}
+            }
         }
         
         last if !$self->isRunning;
     }
     
-    return $self->{_return_value};
+    return $self;
 }
 
 sub run_once {
@@ -143,11 +143,8 @@ sub _run {
     my $self = shift;
     my $file = shift;
     
-    system($self->{_js},'-e','"print(2+2)"');
-    
     my @cmd = ($self->{_js},'-i','-e', $self->_ini_script());
-    my $cmd = $self->{_js} . ' -i -e ' . $self->_ini_script();
-    my $pid = open2($self->{FROM_JSHELL},$self->{TO_JSHELL}, $cmd);
+    my $pid = open2($self->{FROM_JSHELL},$self->{TO_JSHELL}, @cmd);
     $self->{jshell_pid} = $pid;
     
     $SIG{INT} = sub {
@@ -208,7 +205,7 @@ sub Set {
         $self->call('jshell.setFunction',$name,$MethodsCounter,$self->{context});
         #print Dumper "$MethodsCounter = $name";
     } else {
-        $self->call('jshell.Set',$name,$value,$self->{context});
+        $self->call('jshell.Set',$name,$value,$self->context);
     }
     
     return $self;
@@ -231,7 +228,7 @@ sub get {
     };
     
     #$self->{running} = 1;
-    $self->call('jshell.getValue',$value,$self->{context},@_);
+    $self->call('jshell.getValue',$value,$self->context,@_);
     $self->run_once();
     return $val;
 }
@@ -248,7 +245,7 @@ sub call {
     my $send = {
         fn => $fun,
         args => $args,
-        context => $self->{context}
+        context => $self->context
     };
     
     $send = $self->toJson($send);
@@ -270,7 +267,7 @@ sub load {
 sub eval {
     my $self = shift;
     my $code = shift;
-    $self->call('jshell.evalCode',$code,$self->{context});
+    $self->call('jshell.evalCode',$code,$self->context);
     
 }
 
@@ -466,8 +463,8 @@ JavaScript::Shell - Run Spidermonkey shell from Perl
 JavaScript::Shell will turn Spidermonkey shell to an interactive environment
 by connecting it to perl
 
-It will allow you to bind functions from perl and call them from javascript or
-create functions in javascript and call them from perl
+It will let you bind functions from perl and call them from javascript or
+create functions in javascript then call them from perl
 
 =head1 WHY
 
@@ -735,12 +732,13 @@ Destroy javascript shell / clear context
 
 =head1 LICENSE
 
-
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.16.2 or,
+at your option, any later version of Perl 5 you may have available.
 
 =head1 COPYRIGHTS
 
-
+Copyright (C) 2013 by Mamod A. Mehyar <mamod.mehyar@gmail.com>
 
 =cut
-
 

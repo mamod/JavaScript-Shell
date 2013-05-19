@@ -45,8 +45,8 @@ JavaScript::Shell - Run Spidermonkey shell from Perl
 JavaScript::Shell will turn Spidermonkey shell to an interactive environment
 by connecting it to perl
 
-It will allow you to bind functions from perl and call them from javascript or
-create functions in javascript and call them from perl
+It will let you bind functions from perl and call them from javascript or
+create functions in javascript then call them from perl
 
 =head1 WHY
 
@@ -314,10 +314,12 @@ Destroy javascript shell / clear context
 
 =head1 LICENSE
 
-
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself, either Perl version 5.16.2 or,
+at your option, any later version of Perl 5 you may have available.
 
 =head1 COPYRIGHTS
 
-
+Copyright (C) 2013 by Mamod A. Mehyar <mamod.mehyar@gmail.com>
 
 =cut

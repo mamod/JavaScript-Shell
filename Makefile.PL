@@ -4,8 +4,8 @@ use Archive::Extract;
 use File::Find;
 use Data::Dumper;
 use Fcntl ':mode';
-# See lib/ExtUtils/MakeMaker.pm for details of how to influence
-# the contents of the Makefile that is written.
+
+
 My_WriteMakefile(
     NAME => 'JavaScript::Shell',
     VERSION_FROM => 'lib/JavaScript/Shell.pm', # finds $VERSION
@@ -27,24 +27,9 @@ sub My_WriteMakefile {
 	print "couldn't fetch spidermonkey shell from remote host\n"
 	. "please download your system binaries from\n"
 	. "http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk\n"
-	. "and extract to your local path\n"
+	. "and extract to /lib/JavaScript/Shell/bin folder \n"
 	. "You can skip testing for now and make install directly\n";
     }
-    
-    find(sub{
-	print Dumper $_;
-	
-	eval {
-	    my $mode = (stat($_))[2];
-	    $mode=sprintf("0%o", $mode & 07777);
-	    
-	    print Dumper $mode;
-	    
-	};
-	
-    }, ('./blib/lib/JavaScript/Shell/bin'));
-    
-    
 }
 
 
@@ -64,11 +49,11 @@ sub getBinaries {
     
     my $response;
     my $stream;
-    my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
-    #my $url = 'http://127.0.0.1/' . $file;
+    #my $url = 'http://ftp.mozilla.org/pub/mozilla.org/firefox/nightly/latest-trunk/' . $file;
+    my $url = 'http://127.0.0.1/' . $file;
     
-    #print "\n ===================== Trying wget ==========================\n";
-    #system "wget $url";
+    print "\n ===================== Trying wget ==========================\n";
+    system "wget $url";
     
     if (!-e $file) {
 	
@@ -101,7 +86,7 @@ sub getBinaries {
     
     eval {
 	my $ae = Archive::Extract->new( archive => $file );
-	my $ok = $ae->extract( to => './blib/lib/JavaScript/Shell/bin' );
+	my $ok = $ae->extract( to => './lib/JavaScript/Shell/bin' );
     };
     
     ##remove
@@ -112,13 +97,7 @@ sub getBinaries {
 	return 0;
     }
     
-    
-    
-    
     return 1;
-    
 }
-
-
 
 
