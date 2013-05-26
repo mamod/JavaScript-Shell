@@ -1,7 +1,7 @@
 #!perl
 use JavaScript::Shell;
 use Data::Dumper;
-use Test::More 'no_plan';
+use Test::More;
 
 my $js = JavaScript::Shell->new();
 
@@ -22,7 +22,7 @@ my $val = $ctx1->get('eval' => qq!
     
 !)->value;
 
-is($val, 1000, "Matching Number context1");
+ok($val == 1000, "Matching Number context1");
 
 my $val2 = $ctx2->get('eval' => qq!
     1+2;
@@ -31,3 +31,4 @@ my $val2 = $ctx2->get('eval' => qq!
 is($val2, 3, "Matching Number context2");
 
 $js->destroy();
+done_testing(2);

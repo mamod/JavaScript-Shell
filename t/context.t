@@ -1,6 +1,6 @@
 use JavaScript::Shell;
 use Data::Dumper;
-use Test::More 'no_plan';
+use Test::More tests => 6;
 
 my $js = JavaScript::Shell->new();
 
@@ -37,9 +37,7 @@ $ctx2->Set('testFun' => sub {
     is($name, 'Mamod', 'Test inside Function');
 });
 
-
 $ctx2->call('testFun','Mamod');
 is($ctx2->get('Last')->value, 'Mehyar', 'Value set inside context function');
-
 
 $js->destroy();
