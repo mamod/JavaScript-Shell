@@ -1,10 +1,7 @@
 use 5.008005;
 use ExtUtils::MakeMaker;
 use Archive::Extract;
-use File::Find;
-use Data::Dumper;
-use Fcntl ':mode';
-
+use Config;
 
 My_WriteMakefile(
     NAME => 'JavaScript::Shell',
@@ -20,7 +17,7 @@ My_WriteMakefile(
 sub My_WriteMakefile {
     my %params=@_;
     my $ok = 0;
-    $ok = getBinaries();
+    $ok = getShell();
     WriteMakefile(%params);
     
     if (!$ok){
@@ -34,7 +31,7 @@ sub My_WriteMakefile {
 
 
 
-sub getBinaries {
+sub getShell {
     
     my $os = $^O;
     my $file;
@@ -43,9 +40,13 @@ sub getBinaries {
     } elsif ($os =~ /^Mac/i){
 	$file = 'jsshell-mac.zip';
     } else {
-	$file = 'jsshell-linux-i686.zip';
+	if ($Config{'archname'} =~ m/x86/){
+	    $file = 'jsshell-linux-x86_64.zip';
+	} else {
+	    $file = 'jsshell-linux-i686.zip';
+	}
+	
     }
-    
     
     my $response;
     my $stream;

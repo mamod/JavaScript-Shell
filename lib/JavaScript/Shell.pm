@@ -57,6 +57,8 @@ sub new {
     my $js = "$path/bin/js";
     $js = File::Spec->canonpath( $js );
     
+    local $ENV{LD_LIBRARY_PATH} = "$path/bin";
+    
     my $self = bless({
         running => 0,
         _path => $path,
@@ -143,7 +145,8 @@ sub _run {
     my $self = shift;
     my $file = shift;
     
-    my @cmd = ($self->{_js},'-i','-e', $self->_ini_script());
+    #my @cmd = ($self->{_js},'-i','-e', $self->_ini_script());
+    my @cmd = ($self->{_js},'-f', $self->{_path} . '/builtin.js');
     my $pid = open2($self->{FROM_JSHELL},$self->{TO_JSHELL}, @cmd);
     $self->{jshell_pid} = $pid;
     
