@@ -121,7 +121,7 @@ sub run {
             $self->processData($catch);
         } else {
             if (!$once) {
-                STDOUT->print($catch);
+                print STDOUT ($catch);
             }
         }
         
@@ -189,7 +189,8 @@ sub onError {
 sub send {
     my $self = shift;
     my $code = shift;
-    $self->{TO_JSHELL}->print($code . "\n");
+    my $to = $self->{TO_JSHELL};
+    print $to ($code . "\n");
 }
 
 #===============================================================================
@@ -340,6 +341,11 @@ sub _ini_script {
 sub destroy {
     my $self = shift;
     $self->call('quit');
+}
+
+sub DESTROY {
+    my $self = shift;
+    kill -9,$self->{jshell_pid};
 }
 
 #===============================================================================
