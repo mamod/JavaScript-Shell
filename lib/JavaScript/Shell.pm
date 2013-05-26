@@ -6,7 +6,6 @@ use FindBin qw($Bin);
 use File::Spec;
 use Carp;
 use JSON::Any;
-use Data::Dumper;
 use IPC::Open2;
 
 our $VERSION = '0.01';
@@ -336,7 +335,7 @@ sub _ini_script {
 
 
 #===============================================================================
-# TODO : error handling, I'm not familiar with piping
+# destroy
 #===============================================================================
 sub destroy {
     my $self = shift;
