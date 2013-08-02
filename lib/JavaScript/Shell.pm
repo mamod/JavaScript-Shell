@@ -411,7 +411,7 @@ sub new {
     my $encoding = shift || 'none';
     
     #create new temp file
-    my ($fh, $filename) = tempfile(DIR => "E://tmp");
+    my ($fh, $filename) = tempfile();
     binmode $fh,":encoding(utf-8)";
     print $fh $RET->{str};
     close $fh;
