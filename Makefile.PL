@@ -7,7 +7,7 @@ My_WriteMakefile(
     NAME => 'JavaScript::Shell',
     VERSION_FROM => 'lib/JavaScript/Shell.pm', # finds $VERSION
     PREREQ_PM => {
-	'JSON::Any' => 0
+	'JSON::XS' => 0
     },
     ($] >= 5.005 ? ## Add these new keywords supported since 5.005
       (ABSTRACT_FROM => 'lib/JavaScript/Shell.pm', # retrieve abstract from module

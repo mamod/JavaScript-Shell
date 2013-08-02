@@ -5,18 +5,21 @@ use utf8;
 use FindBin qw($Bin);
 use File::Spec;
 use Carp;
-use JSON::Any;
+use JSON::XS;
 use IPC::Open2;
-
-our $VERSION = '0.01';
-
+our $VERSION = '0.02';
 #===============================================================================
 # Global Methods
 #===============================================================================
 my $MethodsCounter = 0;
 my $METHODS = {
     ##pre defined methods
-    __stopLoop => \&stop
+    __stopLoop => \&stop,
+    _deleteTempFile => sub {
+        shift;
+        my $args = shift;
+        unlink $args;
+    }
 };
 
 #===============================================================================
@@ -47,7 +50,7 @@ sub new {
             . ' at '
             . $error->{file}
             . ' line ' . $error->{line} . "\n";
-            exit(0);
+            exit(1);
         }
     }
     
@@ -61,7 +64,7 @@ sub new {
     my $self = bless({
         running => 0,
         _path => $path,
-        _json => JSON::Any->new,
+        _json => JSON::XS->new,
         _ErrorHandle => $opt->{onError},
         _js => $js,
         pid => $$
@@ -71,18 +74,15 @@ sub new {
     return $self;
 }
 
-
 #===============================================================================
 # createContext
 #===============================================================================
 sub createContext {
     my $self = shift;
     my $sandbox = shift;
-    
     if (defined $sandbox && ref $sandbox ne 'HASH'){
         croak "createContext accepts HASH Ref Only";
     }
-    
     return JavaScript::Shell::Context->new($self,$sandbox);
 }
 
@@ -91,17 +91,40 @@ sub createContext {
 #===============================================================================
 sub path        {   shift->{_path}                  }
 sub json        {   shift->{_json}                  }
-sub toJson      {   shift->{_json}->objToJson(@_)   }
-sub toObject    {   shift->{_json}->jsonToObj(@_)   }
+sub toJson      {   shift->{_json}->encode(@_)   }
+sub toObject    {   shift->{_json}->decode(@_)   }
 sub context     {   shift->{context}                }
 sub watcher     {   shift->{FROM_JSHELL}            }
 
 #===============================================================================
-# Running Loop
+# IPC - listen
 #===============================================================================
 sub isRunning { shift->{running} == 1 }
-sub run {
+
+sub _run {
+    my $self = shift;
+    my $file = shift;
     
+    my @cmd = ($self->{_js},'-f', $self->{_path} . '/builtin.js');
+    my $pid = open2($self->{FROM_JSHELL},$self->{TO_JSHELL}, @cmd);
+    $self->{jshell_pid} = $pid;
+    
+    binmode $self->{TO_JSHELL},":utf8";
+    binmode $self->{FROM_JSHELL},":crlf :utf8";
+    
+    ## set error handler
+    $self->Set('jshell.onError' => sub {
+        my $js = shift;
+        my $args = shift;
+        $self->{_ErrorHandle}->($js,$args->[0]);
+    });
+    
+    return $self;
+}
+#===============================================================================
+# Running Loop
+#===============================================================================
+sub run {
     my $self = shift;
     my $once = shift;
     
@@ -113,57 +136,22 @@ sub run {
     }
     
     my $WATCHER = $self->watcher;
-    my $catch;
     
-    while($catch = <$WATCHER>){
-        $catch =~ s/^.*js> //;
-        if ($catch =~ s/to_perl\[(.*)\]end_perl/$1/){
-            $self->processData($catch);
-        } else {
-            if (!$once) {
-                print STDOUT ($catch);
-            }
-        }
-        
+    while(my $catch = <$WATCHER>){
+        $self->processData($catch);
         last if !$self->isRunning;
     }
-    
     return $self;
 }
 
+#===============================================================================
+# run once is run twice actually - the second one to make sure there is no
+# actions left
+#===============================================================================
 sub run_once {
     my $self = shift;
-    my $ret = $self->run(1);
-    return $ret;
-}
-
-#===============================================================================
-# IPC - listen
-#===============================================================================
-sub _run {
-    my $self = shift;
-    my $file = shift;
-    
-    #my @cmd = ($self->{_js},'-i','-e', $self->_ini_script());
-    my @cmd = ($self->{_js},'-f', $self->{_path} . '/builtin.js');
-    my $pid = open2($self->{FROM_JSHELL},$self->{TO_JSHELL}, @cmd);
-    $self->{jshell_pid} = $pid;
-    
-    $SIG{INT} = sub {
-        kill -9,$pid;
-        ###restore INT signal
-        $SIG{INT} = 'DEFAULT';
-        print "^C\n";
-        exit(0);
-    };
-    
-    ## set error handler
-    $self->Set('jshell.onError' => sub {
-        my $js = shift;
-        my $args = shift;
-        $self->{_ErrorHandle}->($js,$args->[0]);
-    });
-    
+    $self->run(1);
+    $self->run(1);
     return $self;
 }
 
@@ -187,10 +175,11 @@ sub onError {
 # send code to shell
 #===============================================================================
 sub send {
+    my $ret = {};
     my $self = shift;
-    my $code = shift;
+    local $ret->{code} = shift;
     my $to = $self->{TO_JSHELL};
-    print $to ($code . "\n");
+    print $to ($ret->{code} . "\n");
 }
 
 #===============================================================================
@@ -200,17 +189,15 @@ sub Set {
     my $self = shift;
     my $name = shift;
     my $value = shift;
-    
+    my $options = shift;
     my $ref = ref $value;
     if ($ref eq 'CODE'){
         $MethodsCounter++;
         $METHODS->{$MethodsCounter} = $value;
-        $self->call('jshell.setFunction',$name,$MethodsCounter,$self->{context});
-        #print Dumper "$MethodsCounter = $name";
+        $self->call('jshell.setFunction',$name,$MethodsCounter,$self->{context},$options);
     } else {
         $self->call('jshell.Set',$name,$value,$self->context);
     }
-    
     return $self;
 }
 
@@ -220,17 +207,13 @@ sub Set {
 sub get {
     my $self = shift;
     my $value = shift;
-    
     my $val = JavaScript::Shell::Result->new();
-    
     $METHODS->{setValue} = sub {
         my $self = shift;
         my $args = shift;
         $val->add($args);
         return 1;
     };
-    
-    #$self->{running} = 1;
     $self->call('jshell.getValue',$value,$self->context,@_);
     $self->run_once();
     return $val;
@@ -244,7 +227,6 @@ sub call {
     my $self = shift;
     my $fun = shift;
     my $args = \@_;
-    
     my $send = {
         fn => $fun,
         args => $args,
@@ -274,19 +256,49 @@ sub eval {
     
 }
 
+sub datavar {
+    my $self = shift;
+    $self->{buffer} = \$_[0];
+}
+
 #===============================================================================
 #  Process data from & to js shell
 #===============================================================================
 sub processData {
     my $self = shift;
-    my $obj = shift;
+    my $obj = $_[0];
     
     #convert recieved data from json to perl hash
     #then translate and process
-    my $hash = $self->toObject($obj);
-    my $args = '';
+    my $hash = {};
+    my $ret = {};
+    
+    eval {
+        $hash = $self->toObject($obj);
+    };
+    
+    ##
+    if ($@){
+        
+        #read until we get end of buffer;
+        my $w = $self->watcher;
+        
+        $self->{buffer} = $obj;
+        $self->{buffer} .= do {
+            local $/ = "defdba7883bd47f7a043e0c9680d8b13";
+            <$w>;
+        };
+        
+        use bytes;
+        my $len = bytes::length($self->{buffer}) - 33;
+        $self->{buffer} = unpack "a$len", $self->{buffer};
+        no bytes;
+        return;
+    }
     
     my $callMethod;
+    
+    local $ret->{args};
     if (my $method = $hash->{method}){
         if (my $sub = $METHODS->{$method}) {
             $callMethod = sub { $self->$sub(shift,shift) };
@@ -294,58 +306,51 @@ sub processData {
             croak "can't locate method $method";
         }
         
-        $args = $callMethod->($hash->{args},$hash);
+        $ret->{args} = $callMethod->($hash->{args},$hash);
     }
     
-    $hash->{_args} = $args;
-    $self->jclose($hash);
+    $self->{buffer} = '';
+    if (ref $ret->{args} eq 'JavaScript::Shell::Buffer'){
+        $hash->{_buffer} = $ret->{args}->{buff};
+    } else {
+        $hash->{_args} = $ret->{args};
+    }
     
+    $ret->{args} = $self->toJson($hash);
+    $self->send("jshell.setArgs($ret->{args})");
+    undef $ret;
+    return 1;
 }
 
-sub jclose {
+sub buffer {
     my $self = shift;
-    my $args = shift;
-    $args = $self->toJson($args);
-    return $self->send("jshell.setArgs($args)");
+    my $ret = {};
+    $ret->{args} = shift;
+    my $encoding = shift;
+    return JavaScript::Shell::Buffer->new($ret->{args},$encoding);
 }
 
-#===============================================================================
-# script to start the shell, loading some required system js files
-#===============================================================================
-sub _ini_script {
+sub getBuffer {
     my $self = shift;
-    my $file = shift;
-    my $path = $self->{_path} || '';
-    
-    my $builtin = "$path/builtin.js";
-    $builtin = File::Spec->canonpath( $builtin ) ;
-    
-    ##-- Fix -- spidermonkey shell complain about
-    ## malformed hexadecimal character escape sequence
-    $builtin =~ s/\\/\\\\/g;
-    
-    my @script = (
-        '"',
-        "load('$builtin')",
-        '"'
-    );
-    
-    my $javascript = join "",@script;
-    return $javascript;
+    my $ret = {};
+    local $ret->{ret} = $self->{buffer};
+    ##buffer will get empty once consumed
+    undef $self->{buffer};
+    return $ret->{ret};
 }
-
 
 #===============================================================================
 # destroy
 #===============================================================================
 sub destroy {
     my $self = shift;
+    #delete $self->{FROM_JSHELL};
     $self->call('quit');
 }
 
 sub DESTROY {
     my $self = shift;
-    kill -9,$self->{jshell_pid};
+    kill -9,$self->{jshell_pid} if $$ > 0;
 }
 
 #===============================================================================
@@ -395,26 +400,28 @@ sub new {
 }
 
 
-#===============================================================================
-# JavaScript::Shell::Template
-# XXXX - ToDo
-#===============================================================================
-#package JavaScript::Shell::Template;
-#use base 'JavaScript::Shell';
-#no warnings 'redefine';
-#
-#sub new {
-#    my $class = shift;
-#    my $js = shift;
-#    my $name = shift;
-#    
-#    my $args = {};
-#    
-#    %{$args} = %{$js};
-#    my $self = bless($args,$class);
-#    
-#    return $self;
-#}
+package JavaScript::Shell::Buffer;
+use Scalar::Util 'weaken';
+use File::Temp qw/ tempfile tempdir /;
+
+my $RET = {};
+sub new {
+    my $class = shift;
+    local $RET->{str} = shift;
+    my $encoding = shift || 'none';
+    
+    #create new temp file
+    my ($fh, $filename) = tempfile(DIR => "E://tmp");
+    binmode $fh,":encoding(utf-8)";
+    print $fh $RET->{str};
+    close $fh;
+    
+    undef $RET->{str};
+    return bless({
+        buff => $filename
+    },$class);
+}
+
 
 1;
 
@@ -465,16 +472,14 @@ JavaScript::Shell - Run Spidermonkey shell from Perl
 JavaScript::Shell will turn Spidermonkey shell to an interactive environment
 by connecting it to perl
 
-It will let you bind functions from perl and call them from javascript or
-create functions in javascript then call them from perl
+With JavaScript::Shell you can bind functions from perl and call them from
+javascript or create functions in javascript then call them from perl
 
 =head1 WHY
 
 While I was working on a project where I needed to connect perl with javascript
 I had a lot of problems with existing javascript modules, they were eaither hard
-to compile or out of date, and since I don't know C/C++ - creating my own
-perl / javascript binding wasn't an option, so I thought of this approach as an
-alternative.
+to compile or out of date, so I thought of this approach as an alternative.
 
 Even though this sounds crazy to do, to my surprise it worked as expected - at
 least in my usgae cases
@@ -488,26 +493,25 @@ bindings ported to perl directly
 There is another over head when translating data types to/from perl, since it
 converts perl data to JSON & javascript JSON to perl data back again.
 
-Saying that the over all speed is acceptable and you can take some steps to
+Saying that, the over all speed is acceptable and you can take some steps to
 improve speed like
 
 =over 4
-
-=item L<JSON::XS>
-
-Make sure you have L<JSON::XS> installed - this is important, JavaScript::Shell
-uses JSON::Any to parse data and it will use any available JSON parser
-but if you have JSON::XS installed in your system it will use it by default as
-it's the fastest JSON parser available
 
 =item Data Transfer
 
 Try to transfer small data chunks between processes when possible, sending
 large data will be very slow
 
+=item Buffer Data
+
+As of version 0.02 JavaScript::shell has a new method for dealing with large
+strings passed to/from javascript, use this feature when ever you want to send
+large data "strings" -- see C<buffer>
+
 =item Minimize calls
 
-Minimize number of calls to both ends, let each part do it's processing
+Minimize number of calls to both ends, let each part do it's processing.
 for eaxmple:
 
     ##instead of
@@ -642,7 +646,7 @@ get values from javascript code, returns a C<JavaScript::Shell::Value> Object
     ## remember to call value to get the returned string/object
     
 get method will search your context for a matched variable/object/function and
-return it's value, if the name was detected for a function in will run this
+return it's value, if the name was detected for a function it will run this
 function first and then returns it's return value
     
     $ctx->get('obj.name')->value; ## XXX
@@ -679,6 +683,38 @@ eval javascript code
         }
         ...
     !);
+    
+=head2 buffer
+
+This function should be used only when dealing with passing large strings
+
+    $js->Set('largeStr' => sub{
+        
+        my $js = shift;
+        my $args = shift;
+        
+        ##we have a very large string we need to pass to
+        ##javascript
+        
+        return $js->buffer('large string');
+        
+    });
+    
+    
+    ##javascript
+    var str = largeStr();
+    
+
+The same thing can be done when sending large strings from javascript to perl
+
+    //javascript
+    
+    var str = 'very large string we need to pass to perl';
+    jshell.sendBuffer(str);
+    
+    ##perl
+    ##to consume this string from perl just get it
+    my $str = $js->getBuffer();    
     
 =head2 onError
 

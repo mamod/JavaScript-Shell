@@ -45,16 +45,14 @@ JavaScript::Shell - Run Spidermonkey shell from Perl
 JavaScript::Shell will turn Spidermonkey shell to an interactive environment
 by connecting it to perl
 
-It will let you bind functions from perl and call them from javascript or
-create functions in javascript then call them from perl
+With JavaScript::Shell you can bind functions from perl and call them from
+javascript or create functions in javascript then call them from perl
 
 =head1 WHY
 
 While I was working on a project where I needed to connect perl with javascript
 I had a lot of problems with existing javascript modules, they were eaither hard
-to compile or out of date, and since I don't know C/C++ - creating my own
-perl / javascript binding wasn't an option, so I thought of this approach as an
-alternative.
+to compile or out of date, so I thought of this approach as an alternative.
 
 Even though this sounds crazy to do, to my surprise it worked as expected - at
 least in my usgae cases
@@ -68,26 +66,25 @@ bindings ported to perl directly
 There is another over head when translating data types to/from perl, since it
 converts perl data to JSON & javascript JSON to perl data back again.
 
-Saying that the over all speed is acceptable and you can take some steps to
+Saying that, the over all speed is acceptable and you can take some steps to
 improve speed like
 
 =over 4
-
-=item L<JSON::XS>
-
-Make sure you have L<JSON::XS> installed - this is important, JavaScript::Shell
-uses JSON::Any to parse data and it will use any available JSON parser
-but if you have JSON::XS installed in your system it will use it by default as
-it's the fastest JSON parser available
 
 =item Data Transfer
 
 Try to transfer small data chunks between processes when possible, sending
 large data will be very slow
 
+=item Buffer Data
+
+As of version 0.02 JavaScript::shell has a new method for dealing with large
+strings passed to/from javascript, use this feature when ever you want to send
+large data "strings" -- see C<buffer>
+
 =item Minimize calls
 
-Minimize number of calls to both ends, let each part do it's processing
+Minimize number of calls to both ends, let each part do it's processing.
 for eaxmple:
 
     ##instead of
@@ -222,7 +219,7 @@ get values from javascript code, returns a C<JavaScript::Shell::Value> Object
     ## remember to call value to get the returned string/object
     
 get method will search your context for a matched variable/object/function and
-return it's value, if the name was detected for a function in will run this
+return it's value, if the name was detected for a function it will run this
 function first and then returns it's return value
     
     $ctx->get('obj.name')->value; ## XXX
@@ -259,6 +256,38 @@ eval javascript code
         }
         ...
     !);
+    
+=head2 buffer
+
+This function should be used only when dealing with passing large strings
+
+    $js->Set('largeStr' => sub{
+        
+        my $js = shift;
+        my $args = shift;
+        
+        ##we have a very large string we need to pass to
+        ##javascript
+        
+        return $js->buffer('large string');
+        
+    });
+    
+    
+    ##javascript
+    var str = largeStr();
+    
+
+The same thing can be done when sending large strings from javascript to perl
+
+    //javascript
+    
+    var str = 'very large string we need to pass to perl';
+    jshell.sendBuffer(str);
+    
+    ##perl
+    ##to consume this string from perl just get it
+    my $str = $js->getBuffer();    
     
 =head2 onError
 
